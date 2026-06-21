@@ -1,0 +1,16 @@
+{
+  "name": "direct-line-chat",
+  "version": "1.0.0",
+  "description": "A no-login, real-time two-person chat room. Open the URL, enter a room code, talk.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

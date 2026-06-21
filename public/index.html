@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Direct Line — talk, just by entering a code</title>
+<meta name="description" content="No login. Open the page, enter a name and a room code, start talking in real time." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #13151A;
+    --bg-panel: #1B1E26;
+    --bg-input: #21242E;
+    --border: #2C303B;
+    --paper: #EDE9E0;
+    --paper-dim: #9A9690;
+    --amber: #E8A33D;
+    --amber-dim: #5A451F;
+    --amber-text: #F6DFB0;
+    --teal: #5FA8A0;
+    --teal-dim: #23413D;
+    --teal-text: #CFEDE9;
+    --danger: #C75C4F;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    height: 100%;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  ::placeholder { color: #6B675F; }
+
+  button { font-family: 'Inter', sans-serif; cursor: pointer; }
+  button:active { transform: translateY(1px); }
+  button:disabled { cursor: not-allowed; }
+
+  input:focus, button:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+  }
+
+  /* ---------- Entry screen ---------- */
+  #entry-screen {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--paper-dim);
+    text-transform: uppercase;
+  }
+
+  .eyebrow svg { flex-shrink: 0; }
+
+  h1.title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 28px;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--paper-dim);
+    margin: 0 0 28px 0;
+  }
+
+  label.field-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--paper-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 11px 12px;
+    color: var(--paper);
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    margin-bottom: 18px;
+  }
+
+  .field-input.mono { font-family: 'IBM Plex Mono', monospace; }
+
+  .hint {
+    font-size: 12.5px;
+    color: var(--paper-dim);
+    margin: -10px 0 22px 0;
+    line-height: 1.5;
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--amber);
+    color: #1A1306;
+    border: none;
+    border-radius: 6px;
+    padding: 13px 16px;
+    font-size: 14.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .btn-primary:disabled {
+    background: var(--amber-dim);
+    color: #7A6438;
+  }
+
+  .entry-error {
+    background: #2A1916;
+    color: var(--danger);
+    border: 1px solid #4a2620;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 18px;
+    display: none;
+  }
+
+  /* ---------- Room screen ---------- */
+  #room-screen {
+    display: none;
+    width: 100%;
+    max-width: 520px;
+    height: 88vh;
+    max-height: 720px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .room-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 10px;
+  }
+
+  .room-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--paper-dim);
+    flex-shrink: 0;
+  }
+
+  .status-dot.online {
+    background: var(--teal);
+    animation: pulseDot 1.6s infinite;
+  }
+
+  @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .room-code-display {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .room-status-text {
+    font-size: 11.5px;
+    color: var(--paper-dim);
+    margin-top: 1px;
+  }
+
+  .header-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--paper-dim);
+    padding: 7px 9px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  #messages::-webkit-scrollbar { width: 8px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--paper-dim);
+    font-size: 13.5px;
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  .empty-state strong {
+    color: var(--paper);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row {
+    display: flex;
+    flex-direction: column;
+    animation: msgIn 0.25s ease;
+  }
+
+  .msg-row.mine { align-items: flex-end; }
+  .msg-row.theirs { align-items: flex-start; }
+
+  .msg-meta {
+    font-size: 10.5px;
+    color: var(--paper-dim);
+    margin-bottom: 3px;
+    padding: 0 2px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .msg-bubble {
+    max-width: 78%;
+    padding: 9px 13px;
+    font-size: 14.5px;
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .msg-row.mine .msg-bubble {
+    background: var(--amber-dim);
+    color: var(--amber-text);
+    border: 1px solid #7A5E2C;
+    border-radius: 12px 12px 3px 12px;
+  }
+
+  .msg-row.theirs .msg-bubble {
+    background: var(--teal-dim);
+    color: var(--teal-text);
+    border: 1px solid #2F5F59;
+    border-radius: 12px 12px 12px 3px;
+  }
+
+  .typing-indicator {
+    font-size: 12px;
+    color: var(--paper-dim);
+    padding: 0 18px 4px 18px;
+    height: 18px;
+    flex-shrink: 0;
+    font-style: italic;
+  }
+
+  .conn-banner {
+    padding: 8px 18px;
+    font-size: 12px;
+    text-align: center;
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .conn-banner.error { background: #2A1916; color: var(--danger); }
+  .conn-banner.warn { background: #2A2416; color: var(--amber); }
+
+  .composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+  }
+
+  #composer-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: var(--paper);
+    font-size: 14.5px;
+    outline: none;
+  }
+
+  #send-btn {
+    background: var(--amber);
+    color: #1A1306;
+    border: none;
+    border-radius: 8px;
+    width: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  #send-btn:disabled {
+    background: var(--amber-dim);
+    color: #7A6438;
+  }
+
+  @media (max-width: 480px) {
+    #room-screen { height: 92vh; border-radius: 0; border: none; max-width: 100%; }
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ENTRY SCREEN -->
+<div id="entry-screen">
+  <div class="eyebrow">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path></svg>
+    Direct line
+  </div>
+  <h1 class="title">Open a channel.</h1>
+  <p class="subtitle">No account, no password. Pick a name, choose a frequency, and share the code with the one other person you want on it.</p>
+
+  <div id="entry-error" class="entry-error"></div>
+
+  <form id="entry-form">
+    <label class="field-label" for="name-input">Your name</label>
+    <input class="field-input" id="name-input" placeholder="e.g. Sam" maxlength="24" required autocomplete="off" />
+
+    <label class="field-label" for="room-input">Frequency (room code)</label>
+    <input class="field-input mono" id="room-input" placeholder="leave blank to generate one" maxlength="40" autocomplete="off" />
+    <p class="hint">Already have a code from your friend? Type it here exactly. Otherwise leave it blank — you'll get one to share. A room only holds two people.</p>
+
+    <button type="submit" class="btn-primary" id="join-btn">
+      Enter channel
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+    </button>
+  </form>
+</div>
+
+<!-- ROOM SCREEN -->
+<div id="room-screen">
+  <div class="room-header">
+    <div class="room-header-left">
+      <span class="status-dot" id="status-dot"></span>
+      <div style="min-width:0;">
+        <div class="room-code-display" id="room-code-display"></div>
+        <div class="room-status-text" id="room-status-text">waiting for the other side…</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" id="copy-btn" title="Copy room code">
+        <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        <span id="copy-label">Copy code</span>
+      </button>
+      <button class="header-btn" id="leave-btn" title="Leave channel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="conn-banner" class="conn-banner"></div>
+
+  <div id="messages"></div>
+
+  <div class="typing-indicator" id="typing-indicator"></div>
+
+  <form class="composer" id="composer-form">
+    <input id="composer-input" placeholder="Type a message…" maxlength="2000" autocomplete="off" />
+    <button type="submit" id="send-btn" disabled>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  const myId = { current: null }; // set once socket connects
+  let socket = null;
+  let myName = "";
+  let myRoom = "";
+  let typingTimeout = null;
+
+  const entryScreen = document.getElementById("entry-screen");
+  const roomScreen = document.getElementById("room-screen");
+  const entryForm = document.getElementById("entry-form");
+  const nameInput = document.getElementById("name-input");
+  const roomInput = document.getElementById("room-input");
+  const joinBtn = document.getElementById("join-btn");
+  const entryError = document.getElementById("entry-error");
+
+  const statusDot = document.getElementById("status-dot");
+  const roomCodeDisplay = document.getElementById("room-code-display");
+  const roomStatusText = document.getElementById("room-status-text");
+  const copyBtn = document.getElementById("copy-btn");
+  const copyLabel = document.getElementById("copy-label");
+  const copyIcon = document.getElementById("copy-icon");
+  const leaveBtn = document.getElementById("leave-btn");
+  const messagesEl = document.getElementById("messages");
+  const typingIndicator = document.getElementById("typing-indicator");
+  const connBanner = document.getElementById("conn-banner");
+  const composerForm = document.getElementById("composer-form");
+  const composerInput = document.getElementById("composer-input");
+  const sendBtn = document.getElementById("send-btn");
+
+  const WORDS = ["ember", "delta", "north", "violet", "harbor", "quartz", "linen", "summit", "cobalt", "fennel"];
+
+  function randomRoom() {
+    const w = WORDS[Math.floor(Math.random() * WORDS.length)];
+    const n = Math.floor(100 + Math.random() * 900);
+    return w + "-" + n;
+  }
+
+  function cleanCode(s) {
+    return (s || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
+  }
+
+  function timeFmt(ts) {
+    const d = new Date(ts);
+    let h = d.getHours();
+    const m = d.getMinutes().toString().padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + ":" + m + " " + ampm;
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function showConnBanner(text, type) {
+    connBanner.textContent = text;
+    connBanner.className = "conn-banner " + type;
+    connBanner.style.display = "block";
+  }
+
+  function hideConnBanner() {
+    connBanner.style.display = "none";
+  }
+
+  function renderEmptyState() {
+    messagesEl.innerHTML =
+      '<div class="empty-state">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2C303B" stroke-width="2" style="margin-bottom:10px;"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path></svg>' +
+      '<div>Nothing on this frequency yet.</div>' +
+      '<div style="margin-top:4px;">Share the code <strong>' + escapeHtml(myRoom) + '</strong> and send the first line.</div>' +
+      '</div>';
+  }
+
+  function appendMessage(msg) {
+    const emptyState = messagesEl.querySelector(".empty-state");
+    if (emptyState) emptyState.remove();
+
+    const mine = msg.socketId === myId.current;
+    const row = document.createElement("div");
+    row.className = "msg-row " + (mine ? "mine" : "theirs");
+
+    const meta = document.createElement("div");
+    meta.className = "msg-meta";
+    meta.textContent = (mine ? "you" : msg.from) + " · " + timeFmt(msg.ts);
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    bubble.textContent = msg.text;
+
+    row.appendChild(meta);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderHistory(history) {
+    messagesEl.innerHTML = "";
+    if (!history || history.length === 0) {
+      renderEmptyState();
+      return;
+    }
+    history.forEach(appendMessage);
+  }
+
+  function updatePresence(peerCount) {
+    const online = peerCount >= 2;
+    statusDot.className = "status-dot" + (online ? " online" : "");
+    roomStatusText.textContent = online ? "other side connected" : "waiting for the other side…";
+  }
+
+  // ---- Entry flow ----
+  entryForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    entryError.style.display = "none";
+
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const room = cleanCode(roomInput.value) || randomRoom();
+
+    joinBtn.disabled = true;
+    joinBtn.textContent = "Connecting…";
+
+    connectAndJoin(name, room);
+  });
+
+  function connectAndJoin(name, room) {
+    myName = name;
+    myRoom = room;
+
+    socket = io({ transports: ["websocket", "polling"] });
+
+    socket.on("connect", function () {
+      myId.current = socket.id;
+      socket.emit("join_room", { room: room, name: name }, function (res) {
+        joinBtn.disabled = false;
+        joinBtn.innerHTML = 'Enter channel <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+
+        if (!res || !res.ok) {
+          entryError.textContent = (res && res.error) || "Couldn't join that room. Try again.";
+          entryError.style.display = "block";
+          socket.disconnect();
+          return;
+        }
+
+        enterRoomScreen(res.history, res.peerCount);
+      });
+    });
+
+    socket.on("connect_error", function () {
+      joinBtn.disabled = false;
+      joinBtn.textContent = "Enter channel";
+      entryError.textContent = "Can't reach the server. Check the URL and try again.";
+      entryError.style.display = "block";
+    });
+  }
+
+  function enterRoomScreen(history, peerCount) {
+    entryScreen.style.display = "none";
+    roomScreen.style.display = "flex";
+
+    roomCodeDisplay.textContent = myRoom;
+    updatePresence(peerCount || 1);
+    renderHistory(history);
+
+    sendBtn.disabled = true;
+
+    bindRoomSocketEvents();
+  }
+
+  function bindRoomSocketEvents() {
+    socket.on("new_message", function (msg) {
+      appendMessage(msg);
+    });
+
+    socket.on("presence", function (data) {
+      updatePresence(data.peerCount);
+    });
+
+    socket.on("peer_joined", function (data) {
+      updatePresence(data.peerCount);
+    });
+
+    socket.on("peer_left", function (data) {
+      updatePresence(data.peerCount);
+      typingIndicator.textContent = "";
+    });
+
+    socket.on("peer_typing", function (data) {
+      typingIndicator.textContent = data.isTyping ? data.name + " is typing…" : "";
+    });
+
+    socket.on("disconnect", function () {
+      showConnBanner("Connection lost — trying to reconnect…", "error");
+      statusDot.className = "status-dot";
+    });
+
+    socket.on("connect", function () {
+      hideConnBanner();
+    });
+
+    socket.io.on("reconnect", function () {
+      hideConnBanner();
+      // rejoin the room after reconnecting
+      socket.emit("join_room", { room: myRoom, name: myName }, function (res) {
+        if (res && res.ok) {
+          updatePresence(res.peerCount);
+        }
+      });
+    });
+  }
+
+  // ---- Composer ----
+  composerInput.addEventListener("input", function () {
+    sendBtn.disabled = !composerInput.value.trim();
+
+    if (!socket) return;
+    socket.emit("typing", true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(function () {
+      socket.emit("typing", false);
+    }, 1200);
+  });
+
+  composerForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const text = composerInput.value.trim();
+    if (!text || !socket) return;
+
+    sendBtn.disabled = true;
+    composerInput.value = "";
+
+    socket.emit("send_message", { text: text }, function (res) {
+      if (!res || !res.ok) {
+        showConnBanner("Message failed to send — check your connection.", "warn");
+        setTimeout(hideConnBanner, 3000);
+      }
+    });
+
+    clearTimeout(typingTimeout);
+    socket.emit("typing", false);
+  });
+
+  // ---- Header actions ----
+  copyBtn.addEventListener("click", function () {
+    navigator.clipboard.writeText(myRoom).then(function () {
+      copyLabel.textContent = "Copied";
+      setTimeout(function () { copyLabel.textContent = "Copy code"; }, 1500);
+    }).catch(function () {});
+  });
+
+  leaveBtn.addEventListener("click", function () {
+    if (socket) socket.disconnect();
+    roomScreen.style.display = "none";
+    entryScreen.style.display = "block";
+    messagesEl.innerHTML = "";
+    nameInput.value = myName;
+    roomInput.value = "";
+    entryError.style.display = "none";
+  });
+})();
+</script>
+</body>
+</html>
